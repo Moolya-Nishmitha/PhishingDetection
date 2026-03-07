@@ -22,29 +22,39 @@ def run_detector(model, vectorizer):
         if not user_input:
             continue
 
-        url_result     = analyze_url(user_input)
-        content_result = analyze_content(user_input)
-        ml_result      = ml_predict(user_input, model, vectorizer)
-
-        total_score = url_result["score"] + content_result["score"] + ml_result
+        # Check if it's a URL or text
+        is_url = user_input.startswith(('http://', 'https://', 'www.')) or '.' in user_input and ' ' not in user_input
 
         print("\n--- ANALYSIS REPORT ---")
 
-        print(f"\n[URL Analysis]  Score: {url_result['score']}")
-        if url_result["reasons"]:
-            for r in url_result["reasons"]:
-                print(f"  • {r}")
+        if is_url:
+            # URL analysis only
+            url_result = analyze_url(user_input)
+            print(f"\n[URL Analysis]  Score: {url_result['score']}")
+            if url_result["reasons"]:
+                for r in url_result["reasons"]:
+                    print(f"  • {r}")
+            else:
+                print("  • No URL threats detected")
         else:
-            print("  • No URL threats detected")
+            # Text/email analysis only
+            content_result = analyze_content(user_input)
+            print(f"\n[Content Analysis]  Score: {content_result['score']}")
+            if content_result["keywords_found"]:
+                for k in content_result["keywords_found"]:
+                    print(f"  • {k}")
+            else:
+                print("  • No suspicious content detected")
 
-        print(f"\n[Content Analysis]  Score: {content_result['score']}")
-        if content_result["keywords_found"]:
-            for k in content_result["keywords_found"]:
-                print(f"  • {k}")
-        else:
-            print("  • No suspicious content detected")
-
+        # ML always runs
+        ml_result = ml_predict(user_input, model, vectorizer)
         print(f"\n[ML Classifier]  Prediction: {'⚠ Phishing' if ml_result else '✓ Legitimate'}")
+
+        # Calculate score
+        if is_url:
+            total_score = url_result["score"] + ml_result
+        else:
+            total_score = content_result["score"] + ml_result
 
         print(f"\n[TOTAL RISK SCORE]  {total_score}")
         print_separator()
